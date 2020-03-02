@@ -251,7 +251,7 @@ public class Program {
                     if (bothSidesMergeNeeded)
                     {
                         start = prev.startIndex;
-                        size = prev.size + node.size + next.size + 1; //adding 1 counts the zero spot
+                        size = prev.size + node.size + next.size + 2; //adding 1 counts the zero spot (for both sides)
 
                         indexToAddBeforeTo = index - 1;
 
