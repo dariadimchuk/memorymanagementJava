@@ -3,5 +3,11 @@ package data;
 public enum AlgorithmType {
     First,
     Best,
-    Worst
+    Worst;
+
+
+    @Override
+    public String toString() {
+        return "\nAlgorithm Type: " + this.name();
+    }
 }
