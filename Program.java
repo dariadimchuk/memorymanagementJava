@@ -5,7 +5,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedList;
 
 public class Program {
@@ -60,7 +59,6 @@ public class Program {
 
 
     public void initMemory(){
-        //processLocationTable = new HashMap<>();
         memory = new LinkedList<>();
 
         var first = new Node(NO_PROCESS, 0, sizeKB, false);
@@ -95,30 +93,35 @@ public class Program {
 
     public void genericAllocation(int id, int size){
         if (type == AlgorithmType.First) {
-            firstAllocate(id, size);
+            if(!firstAllocate(id, size)){
+                compaction();
+                if(!firstAllocate(id, size)){
+                    System.out.println("Fatal error: ran out of space for allocation. " + filledSize + " / " + sizeKB);
+                }
+            }
         }
-        else bestWorstAllocate(id, size);
+        else {
+            if(!bestWorstAllocate(id, size)){
+                compaction();
+                if(!bestWorstAllocate(id, size)){
+                    System.out.println("Fatal error: ran out of space for allocation. " + filledSize + " / " + sizeKB);
+                }
+            }
+        }
     }
 
 
-    public void firstAllocate(int id, int size){
+    public boolean firstAllocate(int id, int size){
         filledSize += size;
         var unknownIndex = -1; //temporarily give unknown index
-
         var nodeToMake = new Node(id, unknownIndex, size, true);
 
-        var success = false;
 
         if(memory.size() == 1) { //first insert
             nodeToMake.startIndex = 0;
-            memory.add(0, nodeToMake);
+            addNode(0, nodeToMake, memory.getFirst());
 
-            //this node was previously first
-            memory.get(1).startIndex = nodeToMake.size + 1;
-            memory.get(1).size -= (nodeToMake.size + 1);
-
-            //trackProcessIndex(id, 0);
-            success = true;
+            return true;
         } else{
             for(int i  = 0; i < memory.size(); i++){
                 var curr = memory.get(i);
@@ -128,29 +131,17 @@ public class Program {
                 //if empty and fits our size
                 if (!curr.full && curr.size >= size)
                 {
-                    memory.add(i, nodeToMake);
-                    curr.startIndex = nodeToMake.size + 1 + nodeToMake.startIndex;
-                    curr.size -= (nodeToMake.size + 1);
-
-
-                    //trackProcessIndex(id, i);
-
-                    success = true;
-                    break;
+                    addNode(i, nodeToMake, curr);
+                    return true;
                 }
             }
         }
 
-
-        if (!success)
-        {
-            System.out.println("OOps, we ran out of spacE?? " + filledSize + " / " + sizeKB);
-            //maybe add call do do compaction???
-        }
+        return false;
     }
 
 
-    public void bestWorstAllocate(int id, int size){
+    public boolean bestWorstAllocate(int id, int size){
         filledSize += size;
         var unknownIndex = -1; //temporarily give unknown index
 
@@ -163,13 +154,8 @@ public class Program {
         //completely empty linkedlist
         if(memory.size() == 1) {
             nodeToMake.startIndex = 0;
-            memory.add(0, nodeToMake);
-
-            //this node was previously first
-            memory.get(1).startIndex = nodeToMake.size + 1;
-            memory.get(1).size -= (nodeToMake.size + 1);
-
-            return;
+            addNode(0, nodeToMake, memory.getFirst());
+            return true;
 
         } else{
             for(int i  = 0; i < memory.size(); i++){
@@ -204,17 +190,42 @@ public class Program {
         }
 
 
-        if (bestNodeIndex != -1){
-            memory.add(bestNodeIndex, nodeToMake);
-            bestNode.startIndex = nodeToMake.size + 1 + nodeToMake.startIndex;
-            bestNode.size -= (nodeToMake.size + 1);
-
-
-            //trackProcessIndex(id, bestNodeIndex);
-        } else{
-            System.out.println("OOps, we ran out of spacE?? " + filledSize + " / " + sizeKB);
-            //maybe add call do do compaction???
+        if (bestNodeIndex != -1 && bestNode != null){
+            addNode(bestNodeIndex, nodeToMake, bestNode);
+            return true;
         }
+
+        return false;
+    }
+
+
+    public void addNode(int indexToAddTo, Node nodeToMake, Node nodeAfter){
+        memory.add(indexToAddTo, nodeToMake);
+        nodeAfter.startIndex = nodeToMake.startIndex + nodeToMake.size + 1;
+        nodeAfter.size -= nodeToMake.size + 1;
+    }
+
+
+
+    public void compaction(){
+        var newList = new LinkedList<Node>();
+
+        var startIndex = 0;
+        for(int i = 0; i < memory.size(); i++){
+            var node = memory.get(i);
+            if(node.full){
+                node.startIndex = startIndex;
+                newList.add(node);
+            }
+
+            startIndex += node.size + 1;
+        }
+
+        //new compacted node at the end
+        int compactedSize = sizeKB - filledSize;
+        var compactedNode = new Node(NO_PROCESS, startIndex, compactedSize, false);
+
+        newList.add(compactedNode);
     }
 
 
@@ -222,7 +233,8 @@ public class Program {
 
         for(int index = 0; index < memory.size(); index++){
             var node = memory.get(index);
-            if(node.processId == id){
+
+            if(node.processId == id){ //found!
                 node.full = false;
                 node.processId = NO_PROCESS;
                 filledSize -= node.size;
@@ -243,7 +255,6 @@ public class Program {
                     var size = 0;
 
                     var indexToAddBeforeTo = -1;
-                    //Node nodeToAddBeforeTo = null;
 
                     var nodesToRemove = new ArrayList<Node>();
 
