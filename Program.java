@@ -36,6 +36,10 @@ public class Program {
             filename = ".\\..\\test.txt";
         }
 
+
+        long startTime = System.nanoTime();
+
+
         var lines = Files.readAllLines(Paths.get(filename));
 
         AlgorithmType algorithm = setAlgorithm(Integer.parseInt(lines.get(0)));
@@ -54,6 +58,10 @@ public class Program {
 
         //start management
         mm.beginMemoryManagement(lines);
+
+        long endTime = System.nanoTime();
+        long durationMs = (endTime - startTime) / 1000000;
+        System.out.println("\n\nEnd of program. Time elapsed: " + durationMs + " ms");
     }
 
 

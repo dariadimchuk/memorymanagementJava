@@ -132,8 +132,6 @@ public class MemoryManager {
             for(int i  = 0; i < memory.size(); i++){
                 var curr = memory.get(i);
 
-                nodeToMake.setStartIndex(curr.getSize());
-
                 //if empty and fits our size
                 if (curr.willFit(size))
                 {
@@ -142,6 +140,7 @@ public class MemoryManager {
                         //if lastSize wasn't initialized by first linkedlist item
                         if (lastSize == -1 || lastSize >= curr.getSize())
                         {
+                            nodeToMake.setStartIndex(curr.getStartIndex());
                             bestNode = curr;
                             bestNodeIndex = i;
                             lastSize = curr.getSize();
@@ -151,6 +150,7 @@ public class MemoryManager {
                         //if lastSize wasn't initialized by first linkedlist item
                         if (lastSize == -1 || lastSize <= curr.getSize())
                         {
+                            nodeToMake.setStartIndex(curr.getStartIndex());
                             bestNode = curr;
                             bestNodeIndex = i;
                             lastSize = curr.getSize();
