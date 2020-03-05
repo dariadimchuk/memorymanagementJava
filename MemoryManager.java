@@ -1,6 +1,5 @@
 import data.AlgorithmType;
 import data.Node;
-
 import java.util.*;
 
 public class MemoryManager {
@@ -8,16 +7,22 @@ public class MemoryManager {
     private AlgorithmType algorithm;
     private int sizeKB;
 
-    public TreeSet<Node> allNodes;
-    public TreeSet<Node> emptyNodes;
-    public HashMap<Integer, Node> processesMap;
+    private TreeSet<Node> allNodes;
+    private TreeSet<Node> emptyNodes;
+    private HashMap<Integer, Node> processesMap;
 
+    /**
+     * Creates a MemoryManager which tracks a mock memory and assigns processes to certain areas of the
+     * memory, depending on the chosen algorithm.
+     * @param type - algorithm type. First, Best or Worst
+     * @param memorySize - total size of memory
+     */
     public MemoryManager(AlgorithmType type, int memorySize){
         algorithm = type;
         sizeKB = memorySize;
 
         processesMap = new HashMap<>();
-        allNodes = new TreeSet<>(getDefaultComparator());
+        allNodes = new TreeSet<>(getDefaultComparator()); //track all nodes in the order they are
 
         var bestOrWorstAlg = algorithm == AlgorithmType.Best || algorithm == AlgorithmType.Worst;
         var comparator = bestOrWorstAlg ? getSizeComparator() : getDefaultComparator();
@@ -53,7 +58,7 @@ public class MemoryManager {
 
 
 
-    public void beginMemoryManagement(List<String> lines) throws Exception {
+    public void beginMemoryManagement(List<String> lines) {
         for(int i = 2; i < lines.size(); i++){
             //do everything else
             var line = lines.get(i);
@@ -252,6 +257,11 @@ public class MemoryManager {
             emptyNodes.add(node); //add to empty nodes regardless whether we merged or not
             processesMap.remove(id);
         } //else System.out.print(" - Process " + id + " not found");
+    }
+
+
+    public TreeSet<Node> getMemory(){
+        return allNodes;
     }
 
 

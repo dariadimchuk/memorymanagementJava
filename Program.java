@@ -54,7 +54,7 @@ public class Program {
 
 
         if(debug){
-            printDetails(mm.allNodes);
+            printDetails(mm.getMemory());
         }
 
         //start management
