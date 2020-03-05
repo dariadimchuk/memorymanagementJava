@@ -1,9 +1,7 @@
 import data.AlgorithmType;
 import data.Node;
 
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 
 public class MemoryManager {
 
@@ -13,30 +11,75 @@ public class MemoryManager {
 
     public LinkedList<Node> memory;
 
+
+    public TreeSet<Node> allNodes;
+    public TreeSet<Node> emptyNodes;
+    public HashMap<Integer, Node> processesMap;
+
     public MemoryManager(AlgorithmType type, int memorySize){
         algorithm = type;
         sizeKB = memorySize;
 
         memory = new LinkedList<>();
-        memory.addFirst(new Node(0, sizeKB)); //add an empty node
+        var emptyNode = new Node(0, sizeKB);
+        memory.addFirst(emptyNode); //add an empty node
+
+
+        processesMap = new HashMap<>();
+
+        allNodes = new TreeSet<>(getComparatorForAll());
+        emptyNodes = new TreeSet<>(getEmptyComparator());
+
+        allNodes.add(emptyNode);
+        emptyNodes.add(emptyNode);
+    }
+
+    public Comparator<Node> getComparatorForAll(){
+        return new Comparator<Node>() {
+            @Override
+            public int compare(Node o1, Node o2) {
+                return Integer.compare(o1.getStartIndex(), o2.getStartIndex());
+            }
+        };
     }
 
 
-    public void beginMemoryManagement(List<String> lines){
+    public Comparator<Node> getEmptyComparator(){
+        return new Comparator<Node>() {
+            @Override
+            public int compare(Node o1, Node o2) {
+                switch (algorithm){
+                    case First:
+                        return Integer.compare(o1.getStartIndex(), o2.getStartIndex());
+                    case Best:
+                        return Integer.compare(o1.getSize(), o2.getSize());
+                    case Worst:
+                        return Integer.compare(o1.getSize(), o2.getSize());
+                    default:
+                        return Integer.compare(o1.getStartIndex(), o2.getStartIndex());
+                }
+            }
+        };
+    }
+
+
+
+
+    public void beginMemoryManagement(List<String> lines) throws Exception {
         for(int i = 2; i < lines.size(); i++){
             //do everything else
             var line = lines.get(i);
             determineFunction(line);
 
             if(Program.debug){
-                Program.printDetails(memory);
+                Program.printDetails(allNodes);
             }
         }
     }
 
 
 
-    public void determineFunction(String line){
+    public void determineFunction(String line) throws Exception {
         var instructions = line.split(" ");
         var function = instructions[0];
 
@@ -44,7 +87,7 @@ public class MemoryManager {
         if (function.compareToIgnoreCase("P") == 0) {
             if(Program.debug){
                 System.out.println("\nPrinting command");
-            } else Program.printDetails(memory);
+            } else Program.printDetails(allNodes);
         } else {
             int processId = Integer.parseInt(instructions[1]);
 
@@ -57,117 +100,60 @@ public class MemoryManager {
                 if(Program.debug){ System.out.println("\nAllocating for process " + processId); }
 
                 int size = Integer.parseInt(instructions[2]);
-                genericAllocation(processId, size);
-            }
-        }
 
-    }
-
-    public void genericAllocation(int id, int size){
-        if (algorithm == AlgorithmType.First) {
-            if(!firstAllocate(id, size)){
-                compaction();
-                if(!firstAllocate(id, size)){
-                    System.out.println("Fatal error: ran out of space for allocation. " + filledSize + " / " + sizeKB);
-                }
-            }
-        }
-        else {
-            if(!bestWorstAllocate(id, size)){
-                compaction();
-                if(!bestWorstAllocate(id, size)){
-                    System.out.println("Fatal error: ran out of space for allocation. " + filledSize + " / " + sizeKB);
-                }
-            }
-        }
-    }
-
-
-    public boolean firstAllocate(int id, int size){
-        filledSize += size;
-        var unknownIndex = -1; //temporarily give unknown index
-        var nodeToMake = new Node(id, unknownIndex, size);
-
-
-        if(memory.size() == 1) { //first insert
-            nodeToMake.setStartIndex(0);
-            addNode(0, nodeToMake, memory.getFirst());
-
-            return true;
-        } else{
-            for(int i  = 0; i < memory.size(); i++){
-                var curr = memory.get(i);
-
-                nodeToMake.setStartIndex(curr.getStartIndex());
-
-                //if empty and fits our size
-                if (curr.willFit(size)) {
-                    addNode(i, nodeToMake, curr);
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-
-    public boolean bestWorstAllocate(int id, int size){
-        filledSize += size;
-        var unknownIndex = -1; //temporarily give unknown index
-
-        var nodeToMake = new Node(id, unknownIndex, size);
-
-        Node bestNode = null;
-        int bestNodeIndex = -1;
-        int lastSize = -1;
-
-        //completely empty linkedlist
-        if(memory.size() == 1) {
-            nodeToMake.setStartIndex(0);
-            addNode(0, nodeToMake, memory.getFirst());
-            return true;
-
-        } else{
-            for(int i  = 0; i < memory.size(); i++){
-                var curr = memory.get(i);
-
-                //if empty and fits our size
-                if (curr.willFit(size))
-                {
-                    if(algorithm == AlgorithmType.Best)
-                    {
-                        //if lastSize wasn't initialized by first linkedlist item
-                        if (lastSize == -1 || lastSize >= curr.getSize())
-                        {
-                            nodeToMake.setStartIndex(curr.getStartIndex());
-                            bestNode = curr;
-                            bestNodeIndex = i;
-                            lastSize = curr.getSize();
-                        }
-                    } else if(algorithm == AlgorithmType.Worst)
-                    {
-                        //if lastSize wasn't initialized by first linkedlist item
-                        if (lastSize == -1 || lastSize <= curr.getSize())
-                        {
-                            nodeToMake.setStartIndex(curr.getStartIndex());
-                            bestNode = curr;
-                            bestNodeIndex = i;
-                            lastSize = curr.getSize();
-                        }
+                if(!allocate(processId, size)){
+                    compaction();
+                    if(!allocate(processId, size)){
+                        throw new Exception("Fatal error: ran out of space for allocation of PID "
+                                + processId + ". \" + filledSize + \" / \" + sizeKB");
                     }
                 }
             }
         }
 
+    }
 
-        if (bestNodeIndex != -1 && bestNode != null){
-            addNode(bestNodeIndex, nodeToMake, bestNode);
-            return true;
+
+    public boolean allocate(int id, int size){
+        var nodeToMake = new Node(id, -1, size);
+
+        Node emptyNode = null;
+
+        if(algorithm == AlgorithmType.Best){
+            emptyNode = emptyNodes.floor(nodeToMake);
+        } else if(algorithm == AlgorithmType.Worst){
+            emptyNode = emptyNodes.ceiling(nodeToMake);
+        } else {
+            emptyNode = emptyNodes.first();
         }
 
-        return false;
+
+        //found an empty spot that fits
+        if(emptyNode != null){
+            filledSize += size;
+
+            nodeToMake.setStartIndex(emptyNode.getStartIndex());
+
+            processesMap.put(nodeToMake.getProcessId(), nodeToMake);
+
+            var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize() + 1;
+            int leftover = emptyNode.getSize() - nodeToMake.getSize();
+            emptyNode.setStartIndex(newStartIndex);
+            emptyNode.setSize(leftover);
+
+            if(leftover == 0){
+                allNodes.remove(emptyNode);
+            }
+
+            allNodes.add(nodeToMake);
+
+            return true;
+        } else{
+            //no empty spot found
+            return false;
+        }
     }
+
 
 
     public void addNode(int indexToAddTo, Node nodeToMake, Node nodeAfter){
@@ -180,103 +166,30 @@ public class MemoryManager {
 
 
     public void compaction(){
-        var newList = new LinkedList<Node>();
+        allNodes.removeIf(n -> !n.isFull()); //clear all empties
 
-        var startIndex = 0;
-        for(int i = 0; i < memory.size(); i++){
-            var node = memory.get(i);
-            if(node.isFull()){
-                node.setStartIndex(startIndex);
-                newList.add(node);
-            }
-
-            startIndex += node.getSize() + 1;
-        }
-
-        //new compacted node at the end
+        var startIndex = allNodes.last().getStartIndex();
         int compactedSize = sizeKB - filledSize;
-        var compactedNode = new Node(startIndex, compactedSize);
 
-        newList.add(compactedNode);
+        //create new merged empty node, with start index at the end, and a combined size
+        var mergedEmpty = new Node(startIndex, compactedSize);
+
+        allNodes.add(mergedEmpty);
     }
 
 
-    public void deallocate(int id){
+    public void deallocate(int id) throws Exception {
+        if(!processesMap.containsKey(id)){
+            throw new Exception("Deallocation: Process " + id + " not found");
+        }
 
-        for(int index = 0; index < memory.size(); index++){
-            var node = memory.get(index);
+        var node = processesMap.get(id);
 
-            if(node.getProcessId() == id){ //found!
-                node.releaseNode();
+        filledSize -= node.getSize();
 
-                filledSize -= node.getSize();
-
-                var prev = index > 0 ? memory.get(index - 1) : null;
-                var next = memory.get(index + 1);
-
-                var leftMergeNeeded = prev != null && !prev.isFull();
-                var rightMergeNeeded = next != null && !next.isFull();
-                var bothSidesMergeNeeded = leftMergeNeeded && rightMergeNeeded;
-
-                var anyMergeNeeded = leftMergeNeeded | rightMergeNeeded;
-
-                if (anyMergeNeeded)
-                {
-                    //in case we need to merge some empty blocks together
-                    var start = 0;
-                    var size = 0;
-
-                    var indexToAddBeforeTo = -1;
-
-                    var nodesToRemove = new ArrayList<Node>();
-
-                    //if both neighbours on each side is empty, remove and merge sides
-                    if (bothSidesMergeNeeded)
-                    {
-                        start = prev.getStartIndex();
-                        size = prev.getSize() + node.getSize() + next.getSize() + 2; //adding 1 counts the zero spot (for both sides)
-
-                        indexToAddBeforeTo = index - 1;
-
-                        nodesToRemove.add(prev);
-                        nodesToRemove.add(next);
-                        nodesToRemove.add(node);
-                    }
-                    //if just prev neighbour is empty
-                    else if (leftMergeNeeded)
-                    {
-                        start = prev.getStartIndex();
-                        size = prev.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
-
-                        indexToAddBeforeTo = index - 1;
-
-                        nodesToRemove.add(prev);
-                        nodesToRemove.add(node);
-                    }
-                    //if just next neighbour is empty
-                    else if (rightMergeNeeded)
-                    {
-                        start = node.getStartIndex();
-                        size = next.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
-
-                        indexToAddBeforeTo = index;
-
-                        nodesToRemove.add(next);
-                        nodesToRemove.add(node);
-                    }
-
-
-                    memory.add(indexToAddBeforeTo, new Node(start, size));
-
-                    for (var rm: nodesToRemove) {
-                        memory.remove(rm);
-                    }
-
-                }//merging area done
-
-                break;
-            }//found if statement
-        }//end loop
+        node.releaseNode();
+        emptyNodes.add(node);
+        allNodes.remove(node);
     }
 
 

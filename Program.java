@@ -1,10 +1,10 @@
 import data.AlgorithmType;
 import data.Node;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.LinkedList;
 import java.util.Scanner;
+import java.util.TreeSet;
 
 public class Program {
 
@@ -16,12 +16,12 @@ public class Program {
         try{
             program.readFiles();
         } catch (Exception e){
-            System.out.println(e);
+            System.out.println(e.getMessage());
         }
     }
 
 
-    public void readFiles() throws IOException {
+    public void readFiles() throws Exception {
         System.out.println("Turn on debug? \nDebug ON: Prints on every command & uses test.txt." +
                 "\nDebug OFF: Prints only on P command, and uses specified file. \nDebug: (Y/N) ");
         Scanner in = new Scanner(System.in);
@@ -53,10 +53,11 @@ public class Program {
 
 
         if(debug){
-            printDetails(mm.memory);
+            printDetails(mm.allNodes);
         }
 
         //start management
+
         mm.beginMemoryManagement(lines);
 
         long endTime = System.nanoTime();
@@ -65,10 +66,10 @@ public class Program {
     }
 
 
-    public static void printDetails(LinkedList<Node> memory){
-        for(int i = 0; i < memory.size(); i++){
-            var current = memory.get(i);
-            System.out.println(current.toString());
+    public static void printDetails(TreeSet<Node> nodes){
+
+        for (Node n : nodes) {
+            System.out.println(n);
         }
 
         System.out.println();

@@ -1,6 +1,6 @@
 package data;
 
-public class Node {
+public class Node implements Comparable<Node> {
     public static final int NO_PROCESS = -1;
 
     private int processId;
@@ -34,6 +34,7 @@ public class Node {
         this.size = size;
         this.full = false;
     }
+
 
     public int getProcessId(){
         return this.processId;
@@ -90,6 +91,11 @@ public class Node {
         } else return false;
     }
 
+
+    @Override
+    public int compareTo(Node o) {
+        return Integer.compare(this.size, o.size);
+    }
 
 
     @Override
