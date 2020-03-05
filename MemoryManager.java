@@ -139,8 +139,8 @@ public class MemoryManager {
             emptyNodes.remove(foundSpace);
 
 
-            var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize() + 1;
-            int leftover = foundSpace.getSize() - nodeToMake.getSize() - 1;
+            var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize();
+            int leftover = foundSpace.getSize() - nodeToMake.getSize();
             foundSpace.setStartIndex(newStartIndex);
             foundSpace.setSize(leftover);
 
@@ -164,7 +164,7 @@ public class MemoryManager {
         while(i < allNodes.size()){
             if(node != null){
                 node.setStartIndex(nextIndex);
-                nextIndex = node.getStartIndex() + node.getSize() + 1;
+                nextIndex = node.getStartIndex() + node.getSize();
 
                 totalSize += node.getSize();
 
@@ -175,8 +175,8 @@ public class MemoryManager {
 
 
         var lastNode = allNodes.last();
-        var startIndex = lastNode.getStartIndex() + lastNode.getSize() + 1;
-        int compactedSize = sizeKB - totalSize - allNodes.size();
+        var startIndex = lastNode.getStartIndex() + lastNode.getSize();
+        int compactedSize = sizeKB - totalSize;
 
         //TODO ideally remove all +1 indices. Its fucked. might be caused by deallocate() subtracting incorrectly ???
 
@@ -214,7 +214,7 @@ public class MemoryManager {
                 //if both neighbours on each side is empty, remove and merge sides
                 if (bothSidesMergeNeeded) {
                     start = prev.getStartIndex();
-                    size = prev.getSize() + node.getSize() + next.getSize() + 2; //adding 1 counts the zero spot (for both sides)
+                    size = prev.getSize() + node.getSize() + next.getSize(); //adding 1 counts the zero spot (for both sides)
 
                     nodesToRemove.add(prev);
                     nodesToRemove.add(next);
@@ -223,7 +223,7 @@ public class MemoryManager {
                 //if just prev neighbour is empty
                 else if (leftMergeNeeded) {
                     start = prev.getStartIndex();
-                    size = prev.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
+                    size = prev.getSize() + node.getSize(); //adding 1 counts the zero spot
 
                     nodesToRemove.add(prev);
                     nodesToRemove.add(node);
@@ -231,7 +231,7 @@ public class MemoryManager {
                 //if just next neighbour is empty
                 else if (rightMergeNeeded) {
                     start = node.getStartIndex();
-                    size = next.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
+                    size = next.getSize() + node.getSize(); //adding 1 counts the zero spot
 
                     nodesToRemove.add(next);
                     nodesToRemove.add(node);
