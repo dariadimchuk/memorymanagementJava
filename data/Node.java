@@ -66,7 +66,7 @@ public class Node implements Comparable<Node> {
      * Adds a process to this node and sets it as Full
      * @param processId
      */
-    public void createProcessForNode(int processId){
+    public void allocateNode(int processId){
         this.processId = processId;
         this.full = true;
     }
@@ -74,21 +74,9 @@ public class Node implements Comparable<Node> {
     /**
      * Removes a process from this node and sets it as Empty.
      */
-    public void releaseNode(){
+    public void deallocateNode(){
         this.processId = NO_PROCESS;
         this.full = false;
-    }
-
-
-    /**
-     * If this node is not already full, and its size will fit the passed-in size, it will fit.
-     * @param size
-     * @return T or F for whether it will fit
-     */
-    public boolean willFit(int size){
-        if(!this.full && this.size >= size){
-            return true;
-        } else return false;
     }
 
 

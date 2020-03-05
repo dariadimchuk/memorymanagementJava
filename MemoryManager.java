@@ -155,16 +155,6 @@ public class MemoryManager {
     }
 
 
-
-    public void addNode(int indexToAddTo, Node nodeToMake, Node nodeAfter){
-        memory.add(indexToAddTo, nodeToMake);
-
-        nodeAfter.setStartIndex(nodeToMake.getStartIndex() + nodeToMake.getSize() + 1);
-        nodeAfter.setSize(nodeAfter.getSize() - nodeToMake.getSize() - 1);
-    }
-
-
-
     public void compaction(){
         allNodes.removeIf(n -> !n.isFull()); //clear all empties
 
@@ -184,12 +174,79 @@ public class MemoryManager {
         }
 
         var node = processesMap.get(id);
-
         filledSize -= node.getSize();
 
-        node.releaseNode();
-        emptyNodes.add(node);
-        allNodes.remove(node);
+        /*
+        * TODO NEED TO CHECK & MERGE NEIGHBOURS
+        * */
+
+        node.deallocateNode();
+
+        var prev = allNodes.lower(node);
+        var next = allNodes.higher(node);
+
+        var leftMergeNeeded = prev != null && !prev.isFull();
+        var rightMergeNeeded = next != null && !next.isFull();
+        var bothSidesMergeNeeded = leftMergeNeeded && rightMergeNeeded;
+
+        var anyMergeNeeded = leftMergeNeeded | rightMergeNeeded;
+
+
+        if (anyMergeNeeded) {
+            //in case we need to merge some empty blocks together
+            var start = 0;
+            var size = 0;
+
+            var nodesToRemove = new ArrayList<Node>();
+
+            //if both neighbours on each side is empty, remove and merge sides
+            if (bothSidesMergeNeeded) {
+                start = prev.getStartIndex();
+                size = prev.getSize() + node.getSize() + next.getSize() + 2; //adding 1 counts the zero spot (for both sides)
+
+                nodesToRemove.add(prev);
+                nodesToRemove.add(next);
+                nodesToRemove.add(node);
+            }
+            //if just prev neighbour is empty
+            else if (leftMergeNeeded) {
+                start = prev.getStartIndex();
+                size = prev.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
+
+                nodesToRemove.add(prev);
+                nodesToRemove.add(node);
+            }
+            //if just next neighbour is empty
+            else if (rightMergeNeeded) {
+                start = node.getStartIndex();
+                size = next.getSize() + node.getSize() + 1; //adding 1 counts the zero spot
+
+                nodesToRemove.add(next);
+                nodesToRemove.add(node);
+            }
+
+
+            allNodes.removeAll(nodesToRemove);
+            emptyNodes.removeAll(nodesToRemove);
+
+            //TODO I dont think node got updated inside allNodes OR emptyNodes :((( Need to search & update in both
+            //ANS: we just remove & add it to both!
+
+            node.setStartIndex(start);
+            node.setSize(size);
+            allNodes.add(node);
+            emptyNodes.add(node);
+        } else{
+
+            //no merging was done, but we still need to track this guy as an empty node!
+            emptyNodes.add(node);
+        }
+
+        //TODO before you add this node, we need to remove the ones that require merging....
+        //emptyNodes.add(node);
+        //allNodes.remove(node); //no need to remove! should be in all, even if empty
+
+
     }
 
 
