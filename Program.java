@@ -34,7 +34,7 @@ public class Program {
             filename = in.nextLine();
         } else{
             //filename = ".\\..\\test2.txt";
-            filename = "./../sample_txt/Testing1.txt";
+            filename = "./../sample_txt/Testing3.txt";
         }
 
 
