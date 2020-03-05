@@ -117,32 +117,44 @@ public class MemoryManager {
     public boolean allocate(int id, int size){
         var nodeToMake = new Node(id, -1, size);
 
-        Node emptyNode = null;
+        Node foundSpace = null;
 
         if(algorithm == AlgorithmType.Best){
-            emptyNode = emptyNodes.floor(nodeToMake);
+            foundSpace = emptyNodes.ceiling(nodeToMake);
         } else if(algorithm == AlgorithmType.Worst){
-            emptyNode = emptyNodes.ceiling(nodeToMake);
+            foundSpace = emptyNodes.floor(nodeToMake);
         } else {
-            emptyNode = emptyNodes.first();
+            foundSpace = emptyNodes.first(); //start at beginning
+
+            //search sequentially for one that fits
+            boolean doesntFit = foundSpace.getSize() < size;
+
+            while(foundSpace == null || doesntFit){
+                foundSpace = emptyNodes.higher(foundSpace); //hop up
+                doesntFit = foundSpace.getSize() < size;
+            }
         }
 
 
         //found an empty spot that fits
-        if(emptyNode != null){
+        if(foundSpace != null){
             filledSize += size;
 
-            nodeToMake.setStartIndex(emptyNode.getStartIndex());
+            nodeToMake.setStartIndex(foundSpace.getStartIndex());
 
             processesMap.put(nodeToMake.getProcessId(), nodeToMake);
 
             var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize() + 1;
-            int leftover = emptyNode.getSize() - nodeToMake.getSize();
-            emptyNode.setStartIndex(newStartIndex);
-            emptyNode.setSize(leftover);
+            int leftover = foundSpace.getSize() - nodeToMake.getSize();
+            foundSpace.setStartIndex(newStartIndex);
+            foundSpace.setSize(leftover);
+            //TODO do we need to update emptyNode treeset with the new values of foundSpace ????
+            //TODO ex.) what if we do get an empty spot filled in perfectly. Does it get removed from emptyNodes ?????
+            //TODO ex.) will its size get updated??
 
             if(leftover == 0){
-                allNodes.remove(emptyNode);
+                allNodes.remove(foundSpace);
+                emptyNodes.remove(foundSpace);
             }
 
             allNodes.add(nodeToMake);
