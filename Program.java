@@ -33,7 +33,8 @@ public class Program {
             System.out.println("Please enter path for file of text instructions: ");
             filename = in.nextLine();
         } else{
-            filename = ".\\..\\test.txt";
+            //filename = ".\\..\\test2.txt";
+            filename = "./../sample_txt/Testing1.txt";
         }
 
 
