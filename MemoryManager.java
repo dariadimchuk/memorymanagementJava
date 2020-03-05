@@ -104,10 +104,7 @@ public class MemoryManager {
                 if(!allocate(processId, size)){
                     compaction();
                     if(!allocate(processId, size)){
-                        System.out.println("Allocate: oops no room anymore for " + processId + " size: " + filledSize + " / " + sizeKB);
-
-                        //throw new Exception("Fatal error: ran out of space for allocation of PID "
-                         //       + processId + ". \" + filledSize + \" / \" + sizeKB");
+                        System.out.println("Cannot allocate process " + processId);
                     }
                 }
             }
@@ -173,8 +170,6 @@ public class MemoryManager {
     public void compaction(){
         allNodes.removeIf(n -> !n.isFull()); //clear all empties
 
-
-        //TODO first node could've been empty before removing empties!! SO first() not necessarily staritng at index 0
         var node = allNodes.first();
         int i = 0, nextIndex = 0, totalSize = 0;
 
@@ -195,7 +190,9 @@ public class MemoryManager {
         var startIndex = lastNode.getStartIndex() + lastNode.getSize() + 1;
         int compactedSize = sizeKB - totalSize - allNodes.size();//sizeKB - filledSize - allNodes.size();
 
-        System.out.println("\n\nCompaction: total size - " + totalSize + " vs filledInSize - " + filledSize + "\n\n");
+        //TODO completely get rid of tracking filledSize since its not even accurate >:(
+
+        //TODO ideally remove all +1 indices. Its fucked. might be caused by deallocate() subtracting incorrectly ???
 
         //create new merged empty node, with start index at the end, and a combined size
         var mergedEmpty = new Node(startIndex, compactedSize);
@@ -209,7 +206,7 @@ public class MemoryManager {
     public void deallocate(int id)  {
         if(processesMap.containsKey(id)){
             var node = processesMap.get(id);
-            filledSize -= node.getSize();
+            filledSize -= node.getSize(); //TODO is this why filledSize is wrong? Maybe I need to add 1 or subtract 1 here????
 
             /*
              * TODO NEED TO CHECK & MERGE NEIGHBOURS
@@ -261,6 +258,8 @@ public class MemoryManager {
                 }
 
 
+
+                //TODO there is a size differnet - empty nodes sometimes has more, when allnodes has only 1 empty :(((((
                 allNodes.removeAll(nodesToRemove);
                 emptyNodes.removeAll(nodesToRemove);
 
