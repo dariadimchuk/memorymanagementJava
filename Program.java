@@ -2,8 +2,6 @@ import data.AlgorithmType;
 import data.Node;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.Scanner;
 import java.util.TreeSet;
 
 public class Program {
@@ -14,29 +12,16 @@ public class Program {
         var program = new Program();
 
         try{
-            program.readFiles();
+            program.readFiles(args[0]);
         } catch (Exception e){
             System.out.println(e.getMessage());
         }
     }
 
 
-    public void readFiles() throws Exception {
-        System.out.println("Turn on debug? \nDebug ON: Prints on every command & uses test.txt." +
-                "\nDebug OFF: Prints only on P command, and uses specified file. \nDebug: (Y/N) ");
-        Scanner in = new Scanner(System.in);
-        String input = in.nextLine();
-        debug = input.compareToIgnoreCase("Y") == 0 ? true : false;
+    public void readFiles(String filename) throws Exception {
 
-        var filename = "";
-        if(!debug){
-            System.out.println("Please enter path for file of text instructions: ");
-            filename = in.nextLine();
-        } else{
-            //filename = ".\\..\\test2.txt";
-            filename = "./../sample_txt/Testing3.txt";
-        }
-
+        debug = false; //if true, prints results at EVERY line
 
         long startTime = System.nanoTime();
 
@@ -77,7 +62,7 @@ public class Program {
     }
 
 
-    public AlgorithmType setAlgorithm(int i){
+    private AlgorithmType setAlgorithm(int i){
         switch (i){
             case 1: return AlgorithmType.First;
             case 2: return AlgorithmType.Best;

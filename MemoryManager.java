@@ -36,7 +36,7 @@ public class MemoryManager {
 
 
 
-    public Comparator<Node> getDefaultComparator(){
+    private Comparator<Node> getDefaultComparator(){
         return new Comparator<Node>() {
             @Override
             public int compare(Node o1, Node o2) {
@@ -46,7 +46,7 @@ public class MemoryManager {
     }
 
 
-    public Comparator<Node> getSizeComparator(){
+    private Comparator<Node> getSizeComparator(){
         return new Comparator<Node>() {
             @Override
             public int compare(Node o1, Node o2) {
@@ -56,14 +56,16 @@ public class MemoryManager {
     }
 
 
-
-
+    /**
+     * Reads the passed lines, parses into instructions to allocate/deallocate processes,
+     * and runs memory management for these processes.
+     * @param lines - lines from file
+     */
     public void beginMemoryManagement(List<String> lines) {
         for(int i = 2; i < lines.size(); i++){
-            //do everything else
+
             var line = lines.get(i);
             determineFunction(line);
-            //debugEmpties();
 
             if(Program.debug){
                 Program.printDetails(allNodes);
@@ -72,8 +74,20 @@ public class MemoryManager {
     }
 
 
+    /**
+     * Gets the current memory, with the full or empty processes in it.
+     * @return tree set of processes/empty spaces in the memory
+     */
+    public TreeSet<Node> getMemory(){
+        return allNodes;
+    }
 
-    public void determineFunction(String line) {
+
+    /**
+     * Determines what function should get called on each instruction.
+     * @param line - a single line of instructions (allote/deallocate process or print)
+     */
+    private void determineFunction(String line) {
         var instructions = line.split(" ");
         var function = instructions[0];
 
@@ -81,7 +95,9 @@ public class MemoryManager {
         if (function.compareToIgnoreCase("P") == 0) {
             if(Program.debug){
                 System.out.println("\nPrinting command");
-            } else Program.printDetails(allNodes);
+            }
+
+            Program.printDetails(allNodes);
         } else {
             int processId = Integer.parseInt(instructions[1]);
 
@@ -103,75 +119,128 @@ public class MemoryManager {
             }
         }
 
-    }
+    }//end method
 
 
-    public boolean allocate(int id, int size){
+
+    /**
+     * Allocate a process to memory.
+     * @param id - id of process
+     * @param size - size of process
+     * @return - boolean on whether allocation succeeded
+     */
+    private boolean allocate(int id, int size){
         var nodeToMake = new Node(id, -1, size);
 
-        Node foundSpace = null;
+        Node foundSpace = findEmptySpace(nodeToMake);
 
+        if(foundSpace != null){
+            insertNode(nodeToMake, foundSpace);
+            return true;
+        } else return false; //no empty spot found
+
+    }//end method
+
+
+
+    /**
+     * Finds the empty space for the node we're trying to add, based on the program's selected Algorithm type.
+     *
+     * First - first node that fits.
+     * Best - smallest node that fits.
+     * Worst - largest node that fits.
+     * @param nodeToMake - the node we're trying to add
+     * @return - node we're
+     */
+    private Node findEmptySpace(Node nodeToMake){
         if(algorithm == AlgorithmType.Best){
-            foundSpace = emptyNodes.ceiling(nodeToMake);
-        } else if(algorithm == AlgorithmType.Worst){
-            var reverse = emptyNodes.descendingSet();
-            foundSpace = reverse.first();
-
-            if(foundSpace.getSize() < size){
-                foundSpace = null;
-            }
-        } else {
-            foundSpace = emptyNodes.first(); //start at beginning
-
-            //search sequentially for one that fits
-            boolean noFit = foundSpace != null ? foundSpace.getSize() < size : true;
-            int count = 0;
-            while(count < emptyNodes.size() && noFit){
-                foundSpace = foundSpace == null ? null : emptyNodes.higher(foundSpace); //hop up
-                noFit = foundSpace != null ? foundSpace.getSize() < size : true;
-                count++;
-            }
+            return emptyNodes.ceiling(nodeToMake);
         }
 
 
-        //found an empty spot that fits
-        if(foundSpace != null){
-            nodeToMake.setStartIndex(foundSpace.getStartIndex());
+        if(algorithm == AlgorithmType.Worst){
+            var foundSpace = emptyNodes.last();
 
-            processesMap.put(nodeToMake.getProcessId(), nodeToMake);
+            //check if the biggest node can fit the node we're trying to add
+            if(foundSpace.getSize() < nodeToMake.getSize()){
+                foundSpace = null;
+            }
 
-            //must be removed and added again so it is sorted properly after its size is changed (leftover)
-            emptyNodes.remove(foundSpace);
+            return foundSpace;
+        }
 
 
-            var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize();
-            int leftover = foundSpace.getSize() - nodeToMake.getSize();
-            foundSpace.setStartIndex(newStartIndex);
-            foundSpace.setSize(leftover);
+        if(algorithm == AlgorithmType.First){
+            var foundSpace = emptyNodes.first(); //start at beginning
 
-            if(leftover == 0){
-                allNodes.remove(foundSpace);
-            } else emptyNodes.add(foundSpace);
+            //search sequentially for one that fits
+            boolean noFit = foundSpace != null ? foundSpace.getSize() < nodeToMake.getSize() : true;
+            int count = 0;
 
-            allNodes.add(nodeToMake);
+            //loop until you find a node that fits the one we're trying to add (or till we reach the end)
+            while(count < emptyNodes.size() && noFit){
+                foundSpace = foundSpace == null ? null : emptyNodes.higher(foundSpace); //hop up
+                noFit = foundSpace != null ? foundSpace.getSize() < nodeToMake.getSize() : true;
+                count++;
+            }
 
-            return true;
-        } else return false; //no empty spot found
+            return foundSpace;
+        }
+
+        return null;
     }
 
 
-    public void compaction(){
+
+    /**
+     * Adds the process to the list of all nodes.
+     * @param nodeToMake - process we're adding
+     * @param foundSpace - empty space in memory we're trying to add this process to
+     */
+    private void insertNode(Node nodeToMake, Node foundSpace){
+        nodeToMake.setStartIndex(foundSpace.getStartIndex());
+
+        //track newly added process in hashmap for easier deallocation later
+        processesMap.put(nodeToMake.getProcessId(), nodeToMake);
+
+        //the empty space MUST be removed and added again so it is sorted properly after its size is changed (leftover)
+        emptyNodes.remove(foundSpace);
+
+        var newStartIndex = nodeToMake.getStartIndex() + nodeToMake.getSize();
+        int leftover = foundSpace.getSize() - nodeToMake.getSize();
+        foundSpace.setStartIndex(newStartIndex);
+        foundSpace.setSize(leftover);
+
+
+        if(leftover == 0){
+            //remove from memory if it is completely filled-in (its size is now 0)
+            allNodes.remove(foundSpace);
+        } else {
+            //if there is any space leftover, it should be re-added to emptyNodes & thereby sorted in the accurate spot
+            emptyNodes.add(foundSpace);
+        }
+
+        allNodes.add(nodeToMake);
+    }//end method
+
+
+    /**
+     * Compacts the empty spaces to be just one merged empty space at the end of the memory.
+     * This is done if processes can no longer be added, because the memory is very broken up & too small.
+     */
+    private void compaction(){
         allNodes.removeIf(n -> !n.isFull()); //clear all empties
 
         var node = allNodes.first();
         int i = 0, nextIndex = 0, totalSize = 0;
 
+        //for each filled-in node, we need to update the starting index now that we removed all the empty nodes
         while(i < allNodes.size()){
             if(node != null){
                 node.setStartIndex(nextIndex);
                 nextIndex = node.getStartIndex() + node.getSize();
 
-                totalSize += node.getSize();
+                totalSize += node.getSize(); //track total filled-in size
 
                 node = allNodes.higher(node);
                 i++;
@@ -183,18 +252,22 @@ public class MemoryManager {
         var startIndex = lastNode.getStartIndex() + lastNode.getSize();
         int compactedSize = sizeKB - totalSize;
 
-        //TODO ideally remove all +1 indices. Its fucked. might be caused by deallocate() subtracting incorrectly ???
-
         //create new merged empty node, with start index at the end, and a combined size
         var mergedEmpty = new Node(startIndex, compactedSize);
 
         allNodes.add(mergedEmpty);
-        emptyNodes.clear();
+        emptyNodes.clear(); //remove all empty nodes, and add the merged one
         emptyNodes.add(mergedEmpty);
-    }
+
+    }//end method
 
 
-    public void deallocate(int id)  {
+    /**
+     * Deallocate the specified process.
+     * Sets it's boolean flag to empty, and merges any of its neighbours, if they are also empty, into 1 empty node.
+     * @param id - process id
+     */
+    private void deallocate(int id)  {
         if(processesMap.containsKey(id)){
             var node = processesMap.get(id);
             node.deallocateNode();
@@ -210,7 +283,6 @@ public class MemoryManager {
             var anyMergeNeeded = leftMergeNeeded | rightMergeNeeded;
 
             if (anyMergeNeeded) {
-                //in case we need to merge some empty blocks together
                 var start = 0;
                 var size = 0;
 
@@ -242,27 +314,19 @@ public class MemoryManager {
                     nodesToRemove.add(node);
                 }
 
-                //TODO there is a size different - empty nodes sometimes has more, when allnodes has only 1 empty :(((((
                 allNodes.removeAll(nodesToRemove);
                 emptyNodes.removeAll(nodesToRemove);
 
-                //TODO I dont think node got updated inside allNodes OR emptyNodes :((( Need to search & update in both
-                //ANS: we just remove & add it to both!
-
                 node.setStartIndex(start);
                 node.setSize(size);
+
                 allNodes.add(node);
             }
 
             emptyNodes.add(node); //add to empty nodes regardless whether we merged or not
-            processesMap.remove(id);
-        } //else System.out.print(" - Process " + id + " not found");
-    }
+            processesMap.remove(id); //remove process from hashmap (that's how we can tell whether its in allNodes)
+        }
+    }//end method
 
 
-    public TreeSet<Node> getMemory(){
-        return allNodes;
-    }
-
-
-}
+}//end class
